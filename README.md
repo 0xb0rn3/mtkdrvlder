@@ -1,4 +1,4 @@
-Wireless Adapter Management Script
+MTK Loader Script
 
 This script is designed to manage a wireless adapter, including driver installation, enabling/disabling the adapter, and controlling the LED indicator. It supports various operations and provides an interactive menu for ease of use.
 Features
@@ -21,7 +21,7 @@ To run the script and use the interactive menu:
 
 bash
 
-./manage_adapter.sh
+./mtkloader.sh
 
 You will be presented with a menu to choose from various options:
 
@@ -41,37 +41,37 @@ You can also run the script with specific commands:
 
     bash
 
-./manage_adapter.sh install
+./mtkloader.sh install
 
 Enable Adapter:
 
 bash
 
-./manage_adapter.sh enable
+./mtkloader.sh enable
 
 Disable Adapter:
 
 bash
 
-./manage_adapter.sh disable
+./mtkloader.sh disable
 
 Turn on LED:
 
 bash
 
-./manage_adapter.sh led-on
+./mtkloader.sh led-on
 
 Turn off LED:
 
 bash
 
-./manage_adapter.sh led-off
+./mtkloader.sh led-off
 
 Blink LED:
 
 bash
 
-    ./manage_adapter.sh led-blink
+    ./mtkloader.sh led-blink
 
 Script Functions
 
