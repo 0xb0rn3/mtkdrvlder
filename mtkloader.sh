@@ -24,7 +24,9 @@ check_rfkill() {
 
 # Function to update and install necessary packages
 install_dependencies() {
+  echo "Updating package lists..."
   sudo apt update
+  echo "Installing necessary packages..."
   sudo apt install -y dkms build-essential git
 }
 
@@ -35,11 +37,13 @@ install_driver() {
     cd "$REPO_DIR"
     git pull
   else
+    echo "Cloning repository from $REPO_URL..."
     git clone "$REPO_URL"
     cd "$REPO_DIR"
   fi
 
   # Add the driver to DKMS and build it
+  echo "Running driver installation script..."
   sudo ./install-driver.sh
 
   # Check the installation status
@@ -47,33 +51,42 @@ install_driver() {
     echo "Driver installed successfully."
   else
     echo "Driver installation failed."
+    exit 1
   fi
 }
 
 # Function to enable the adapter
 enable_adapter() {
   check_rfkill
+  echo "Enabling the adapter $INTERFACE..."
   sudo ifconfig $INTERFACE up
   if [ $? -eq 0 ]; then
     echo "Adapter $INTERFACE enabled."
   else
     echo "Failed to enable adapter $INTERFACE."
+    exit 1
   fi
 }
 
 # Function to disable the adapter
 disable_adapter() {
   check_rfkill
+  echo "Disabling the adapter $INTERFACE..."
   sudo ifconfig $INTERFACE down
   if [ $? -eq 0 ]; then
     echo "Adapter $INTERFACE disabled."
   else
     echo "Failed to disable adapter $INTERFACE."
+    exit 1
   fi
 }
 
 # Function to set LED control register
 set_led_register() {
+  if [ -z "$PHY_PATH" ]; then
+    echo "Error: PHY path not found."
+    exit 1
+  fi
   echo 0x770 | sudo tee "${PHY_PATH}/regidx"
 }
 
@@ -85,6 +98,7 @@ led_on() {
     echo "LED for $INTERFACE turned on."
   else
     echo "Failed to turn on LED for $INTERFACE."
+    exit 1
   fi
 }
 
@@ -96,6 +110,7 @@ led_off() {
     echo "LED for $INTERFACE turned off."
   else
     echo "Failed to turn off LED for $INTERFACE."
+    exit 1
   fi
 }
 
@@ -107,6 +122,7 @@ led_blink() {
     echo "LED for $INTERFACE set to blink."
   else
     echo "Failed to set LED for $INTERFACE to blink."
+    exit 1
   fi
 }
 
