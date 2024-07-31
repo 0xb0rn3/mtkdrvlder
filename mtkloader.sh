@@ -5,6 +5,7 @@ REPO_URL="https://github.com/morrownr/7612u.git"
 REPO_DIR="7612u"
 INTERFACE="wlan0"  # Replace with your actual wireless interface name
 PHY_PATH=$(ls /sys/kernel/debug/ieee80211/phy*/mt76 -d 2>/dev/null)
+PERMANENT_POWER=false
 
 # Function to check and unblock RF-kill
 check_rfkill() {
@@ -34,17 +35,39 @@ install_dependencies() {
 install_driver() {
   if [ -d "$REPO_DIR" ]; then
     echo "Directory $REPO_DIR already exists. Pulling the latest changes."
-    cd "$REPO_DIR"
+    cd "$REPO_DIR" || exit
     git pull
   else
     echo "Cloning repository from $REPO_URL..."
     git clone "$REPO_URL"
-    cd "$REPO_DIR"
+    cd "$REPO_DIR" || exit
   fi
 
-  # Add the driver to DKMS and build it
+  # Create the installation script inline
+  echo "#!/bin/bash
+
+  SCRIPT_NAME=\"led_ctrl_7612u.sh\"
+  SCRIPT_VERSION=\"20221021\"
+
+  # check to ensure sudo was used
+  if [[ \$EUID -ne 0 ]]
+  then
+    echo \"You must run this script with superuser (root) privileges.\"
+    echo \"Try: \\\"sudo ./\${SCRIPT_NAME}\\\"\"
+    exit 1
+  fi
+
+  make
+  sudo make install
+
+  exit 0
+  " > led_ctrl_7612u.sh
+
+  chmod +x ./led_ctrl_7612u.sh
+
+  # Run the installation script
   echo "Running driver installation script..."
-  sudo ./install-driver.sh
+  sudo ./led_ctrl_7612u.sh
 
   # Check the installation status
   if [ $? -eq 0 ]; then
@@ -126,6 +149,25 @@ led_blink() {
   fi
 }
 
+# Function to set permanent power
+set_permanent_power() {
+  read -rp "Do you want the USB adapter to be permanently powered on? (y/n): " perm_power_choice
+  case "$perm_power_choice" in
+    y|Y)
+      PERMANENT_POWER=true
+      echo "Permanent power enabled for the USB adapter."
+      ;;
+    n|N)
+      PERMANENT_POWER=false
+      echo "Permanent power disabled for the USB adapter."
+      ;;
+    *)
+      echo "Invalid choice. Assuming no."
+      PERMANENT_POWER=false
+      ;;
+  esac
+}
+
 # Function to display menu and handle user input
 display_menu() {
   echo "Please choose an option:"
@@ -135,19 +177,28 @@ display_menu() {
   echo "4. Turn on LED"
   echo "5. Turn off LED"
   echo "6. Blink LED"
-  echo "7. Exit"
+  echo "7. Set permanent power"
+  echo "8. Exit"
 
-  read -p "Enter your choice [1-7]: " choice
+  read -rp "Enter your choice [1-8]: " choice
   case "$choice" in
     1)
       install_dependencies
       install_driver
       ;;
     2)
-      enable_adapter
+      if [ "$PERMANENT_POWER" = true ]; then
+        echo "Adapter $INTERFACE is set to be permanently powered on."
+      else
+        enable_adapter
+      fi
       ;;
     3)
-      disable_adapter
+      if [ "$PERMANENT_POWER" = true ]; then
+        echo "Adapter $INTERFACE is set to be permanently powered on. Disabling not required."
+      else
+        disable_adapter
+      fi
       ;;
     4)
       led_on
@@ -159,6 +210,9 @@ display_menu() {
       led_blink
       ;;
     7)
+      set_permanent_power
+      ;;
+    8)
       echo "Exiting."
       exit 0
       ;;
@@ -178,10 +232,18 @@ else
       install_driver
       ;;
     enable)
-      enable_adapter
+      if [ "$PERMANENT_POWER" = true ]; then
+        echo "Adapter $INTERFACE is set to be permanently powered on."
+      else
+        enable_adapter
+      fi
       ;;
     disable)
-      disable_adapter
+      if [ "$PERMANENT_POWER" = true ]; then
+        echo "Adapter $INTERFACE is set to be permanently powered on. Disabling not required."
+      else
+        disable_adapter
+      fi
       ;;
     led-on)
       led_on
@@ -192,8 +254,11 @@ else
     led-blink)
       led_blink
       ;;
+    set-permanent-power)
+      set_permanent_power
+      ;;
     *)
-      echo "Usage: $0 {install|enable|disable|led-on|led-off|led-blink}"
+      echo "Usage: $0 {install|enable|disable|led-on|led-off|led-blink|set-permanent-power}"
       ;;
   esac
 fi
