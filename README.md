@@ -1,270 +1,333 @@
-# MTK Driver Loader v0.1.2 OLD PROJECT REVIVED
-## 🔍 Troubleshooting
+# MTK Universal Driver Loader
 
-### Quick Fixes
-
-**Installation Issues**
-```bash
-# Try different installation method
-./mtkloader.sh detect  # Check what's detected
-./mtkloader.sh install # Manual installation
-```
-
-**No Interface Detected**
-```bash
-# Check available interfaces
-ip link show
-iwconfig
-
-# Manual interface specification
-INTERFACE=wlan1 ./mtkloader.sh enable
-```
-
-**Driver Not Loading**
-```bash
-# Check driver status
-./mtkloader.sh status
-lsmod | grep mt76# MTK Universal Driver Loader v2.1
-
-[![GitHub](https://img.shields.io/badge/GitHub-0xb0rn3-blue?logo=github)](https://github.com/0xb0rn3/mtkdrvlder)
-[![Version](https://img.shields.io/badge/Version-2.1-green)](https://github.com/0xb0rn3/mtkdrvlder)
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
-[![Compatibility](https://img.shields.io/badge/Linux-Universal-orange)](https://github.com/0xb0rn3/mtkdrvlder)
-
-Universal Linux script for MTK wireless adapters with automatic hardware detection, minimal installation visuals, and support for ALL major Linux distributions. One-command setup with intelligent auto-detection.
+A universal Linux driver loader for MediaTek USB wireless adapters with automatic distribution detection and minimal configuration.
 
 ## 🚀 Features
 
-### Universal Compatibility
-- **ALL Linux Distributions**: Ubuntu, Debian, Fedora, CentOS, Arch, Manjaro, openSUSE, Alpine, Void, Gentoo
-- **Automatic Package Manager Detection**: apt, dnf, pacman, zypper, apk, emerge, xbps
-- **Smart Dependency Installation**: Installs correct packages for each distribution
-- **Hardware Auto-Detection**: Automatically finds wireless interfaces and devices
+- **Universal Linux Support**: Automatic detection and support for major Linux distributions
+- **Zero Configuration**: Auto-detects hardware and wireless interfaces
+- **Minimal Dependencies**: Installs only what's needed for your specific system
+- **LED Control**: Hardware LED management for supported devices
+- **Interactive & CLI Modes**: Both menu-driven and command-line interfaces
+- **Comprehensive Logging**: Detailed operation logs for troubleshooting
 
-### Minimal Installation Experience  
-- **One-Command Setup**: `./mtkloader.sh quick` - everything automated
-- **Minimal Visuals**: Clean, simple output with essential information only
-- **Silent Mode**: `./mtkloader.sh -q` for completely quiet operation
-- **Progress Indicators**: Simple checkmarks and minimal status updates
+## 📋 Supported Distributions
 
-### Core Functionality
-- **MTK Driver Installation**: Automated 7612U/7610U driver installation
-- **Interface Management**: Auto-detect and manage wireless interfaces
-- **LED Control**: Full LED control (on/off/blink) with hardware detection
-- **RF-Kill Management**: Automatic RF-kill detection and unblocking
+| Distribution Family | Package Manager | Distributions |
+|-------------------|----------------|---------------|
+| **Debian-based** | apt | Ubuntu, Debian, Linux Mint, elementary OS, Zorin |
+| **Red Hat-based** | dnf | Fedora, RHEL, CentOS, Rocky Linux, AlmaLinux |
+| **Arch-based** | pacman | Arch Linux, Manjaro, EndeavourOS, Garuda |
+| **SUSE-based** | zypper | openSUSE, SUSE Linux Enterprise |
+| **Alpine** | apk | Alpine Linux |
+| **Void** | xbps | Void Linux |
+| **Gentoo** | emerge | Gentoo Linux |
 
-## 📋 Supported Systems
+## 🔧 Installation
 
-### Linux Distributions
-- **Debian Family**: Ubuntu, Debian, Linux Mint, Elementary OS, Zorin OS
-- **Red Hat Family**: Fedora, RHEL, CentOS, Rocky Linux, AlmaLinux  
-- **Arch Family**: Arch Linux, Manjaro, EndeavourOS, Garuda Linux
-- **SUSE Family**: openSUSE Leap, openSUSE Tumbleweed
-- **Others**: Alpine Linux, Void Linux, Gentoo Linux
+### Quick Install (Recommended)
 
-### Package Managers
-- **apt** (Debian/Ubuntu)
-- **dnf/yum** (Fedora/RHEL)
-- **pacman** (Arch Linux)
-- **zypper** (openSUSE)
-- **apk** (Alpine)
-- **emerge** (Gentoo)
-- **xbps** (Void Linux)
-
-### Hardware Support
-- **MTK 7612U** USB adapters
-- **MTK 7610U** USB adapters  
-- **Auto-detection** of compatible devices
-- **Universal interface** support (wlan0, wlp*, wlx*)
-
-## ⚡ Quick Start (Recommended)
-
-### One-Command Installation
-```bash
-# Download and run automatic setup
-curl -s https://raw.githubusercontent.com/0xb0rn3/mtkdrvlder/main/mtkloader.sh | bash -s quick
-```
-
-### Manual Download + Quick Setup
 ```bash
 # Download the script
 wget https://raw.githubusercontent.com/0xb0rn3/mtkdrvlder/main/mtkloader.sh
+
+# Make it executable
 chmod +x mtkloader.sh
 
-# Run automatic setup (detects everything)
+# Run automatic setup
 ./mtkloader.sh quick
 ```
 
-### Silent Installation
-```bash
-# Completely quiet installation
-./mtkloader.sh -q
-```
+### Manual Download
 
-## 🔧 Installation Options
-
-### Git Clone Method
 ```bash
+# Clone the repository
 git clone https://github.com/0xb0rn3/mtkdrvlder.git
 cd mtkdrvlder
+
+# Make executable
 chmod +x mtkloader.sh
-./mtkloader.sh quick
+
+# Run setup
+./mtkloader.sh
 ```
 
-### Direct Download Method
-```bash
-wget https://raw.githubusercontent.com/0xb0rn3/mtkdrvlder/main/mtkloader.sh
-chmod +x mtkloader.sh
-./mtkloader.sh auto
-```
+## 🎯 Usage
 
-## 🖥️ Usage
+### Interactive Mode
 
-### Automatic Mode (Recommended)
-The script automatically detects your Linux distribution, hardware, and installs everything needed:
+Simply run the script without arguments for a menu-driven interface:
 
-```bash
-# Automatic setup with detection
-./mtkloader.sh quick
-./mtkloader.sh auto  
-./mtkloader.sh setup
-
-# Silent automatic setup
-./mtkloader.sh -q
-```
-
-### Interactive Menu
-Simple 8-option menu for manual control:
 ```bash
 ./mtkloader.sh
 ```
 
-### Command Line Interface
-Direct commands for automation:
+**Menu Options:**
+1. **Quick Setup (Auto)** - Automatic detection and installation
+2. **Install Driver** - Driver installation only
+3. **Enable Interface** - Activate wireless interface
+4. **LED On** - Turn on hardware LED
+5. **LED Off** - Turn off hardware LED
+6. **LED Blink** - Enable LED blinking
+7. **Status** - Show system and device status
+8. **Exit** - Exit the program
+
+### Command Line Mode
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `quick` / `auto` / `setup` | Automatic setup (recommended) | `./mtkloader.sh quick` |
+| `install` | Install driver only | `./mtkloader.sh install` |
+| `enable` | Enable wireless interface | `./mtkloader.sh enable` |
+| `disable` | Disable wireless interface | `./mtkloader.sh disable` |
+| `led-on` | Turn LED on | `./mtkloader.sh led-on` |
+| `led-off` | Turn LED off | `./mtkloader.sh led-off` |
+| `led-blink` | Enable LED blinking | `./mtkloader.sh led-blink` |
+| `status` | Show device status | `./mtkloader.sh status` |
+| `detect` | Detect hardware only | `./mtkloader.sh detect` |
+| `-q` / `--quiet` | Quiet mode setup | `./mtkloader.sh -q` |
+| `-h` / `--help` | Show help information | `./mtkloader.sh -h` |
+
+### Advanced Usage Examples
 
 ```bash
-# Hardware detection
+# Silent installation
+./mtkloader.sh --quiet
+
+# Check what hardware is detected
 ./mtkloader.sh detect
 
-# Driver installation  
-./mtkloader.sh install
+# Get detailed status information
+./mtkloader.sh status
 
-# Interface control
+# Enable interface after driver installation
 ./mtkloader.sh enable
-./mtkloader.sh disable
+```
 
-# LED control
+## 🔍 Hardware Detection
+
+The tool automatically detects:
+
+- **USB Wireless Devices**: Via `lsusb` command
+- **PCI Wireless Devices**: Via `lspci` command  
+- **Network Interfaces**: Via `ip link` and `iwconfig`
+- **MediaTek Devices**: Specific detection for MTK chipsets
+- **Existing Drivers**: Checks for already loaded modules
+
+### Supported Interface Names
+- `wlan*` (e.g., wlan0, wlan1)
+- `wlp*` (e.g., wlp2s0)
+- `wlx*` (e.g., wlx00c0ca123456)
+
+## 🛠️ Dependencies
+
+The tool automatically installs required dependencies based on your distribution:
+
+### Core Dependencies
+- **Build Tools**: GCC, Make, and build essentials
+- **Kernel Headers**: Matching your current kernel version
+- **DKMS**: Dynamic Kernel Module Support (where available)
+- **Git**: For downloading driver source code
+- **Wireless Tools**: For interface management
+- **USB Utils**: For device detection
+
+### Distribution-Specific Packages
+
+<details>
+<summary>Click to expand package details</summary>
+
+**Debian/Ubuntu-based:**
+- `build-essential`
+- `linux-headers-$(uname -r)`
+- `dkms`, `git`, `wireless-tools`, `iw`, `usbutils`
+
+**Red Hat/Fedora-based:**
+- `gcc`, `make`, `kernel-devel`, `kernel-headers`
+- `dkms`, `git`, `wireless-tools`, `iw`, `usbutils`
+
+**Arch-based:**
+- `base-devel`, `linux-headers`
+- `dkms`, `git`, `wireless_tools`, `iw`, `usbutils`
+
+**SUSE-based:**
+- `gcc`, `make`, `kernel-devel`, `kernel-source`
+- `dkms`, `git`, `wireless-tools`, `iw`, `usbutils`
+
+**Alpine:**
+- `build-base`, `linux-headers`
+- `git`, `wireless-tools`, `iw`, `usbutils`
+- *Note: DKMS not available on Alpine*
+
+**Void:**
+- `gcc`, `make`, `linux-headers`
+- `dkms`, `git`, `wireless_tools`, `iw`, `usbutils`
+
+</details>
+
+## 📊 LED Control
+
+For supported MediaTek devices, you can control the hardware LED:
+
+```bash
+# Turn LED on
 ./mtkloader.sh led-on
-./mtkloader.sh led-off  
+
+# Turn LED off  
+./mtkloader.sh led-off
+
+# Enable LED blinking
 ./mtkloader.sh led-blink
-
-# System status
-./mtkloader.sh status
-
-# Help
-./mtkloader.sh --help
 ```
 
-## 🔧 Auto-Detection Features
+**LED Control Requirements:**
+- MT76 driver must be loaded
+- Device must support LED control
+- Root privileges required
 
-### Hardware Detection
-- **USB Wireless Devices**: Automatically scans and identifies MTK devices
-- **Network Interfaces**: Detects wlan0, wlp*, wlx* interfaces automatically  
-- **MTK Device Recognition**: Specifically identifies MediaTek USB adapters
-- **Driver Status**: Checks if MTK drivers are already loaded
+## 📝 Logging
 
-### Distribution Detection  
-- **Package Manager**: Automatically detects apt/dnf/pacman/zypper/etc
-- **Dependency Mapping**: Installs correct packages per distribution
-- **Kernel Headers**: Finds and installs matching kernel headers
-- **Build Tools**: Installs appropriate build tools for each system
+All operations are logged to `/tmp/mtkloader.log` with timestamps:
 
-### Smart Installation
-- **Minimal Dependencies**: Only installs what's actually needed
-- **Version Detection**: Handles different package names across distributions  
-- **Fallback Options**: Uses alternative methods if primary tools unavailable
-- **Clean Installation**: Removes temporary files automatically
-
-## 📊 System Information
-
-The enhanced version provides detailed system information including:
-- Operating system and kernel version
-- System architecture
-- Current user and permissions
-- Network interface status
-- Driver loading status
-- USB device information
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-**Driver Installation Fails**
 ```bash
-# Check system compatibility
-./mtkloader.sh info
+# View recent logs
+tail -f /tmp/mtkloader.log
 
-# Verify dependencies
-sudo apt update
-sudo apt install dkms build-essential linux-headers-$(uname -r)
-```
-
-**Interface Not Found**
-```bash
-# List available interfaces
-ip link show
-
-# Configure correct interface
-./mtkloader.sh configure
-```
-
-**LED Control Not Working**
-```bash
-# Check if driver is loaded
-./mtkloader.sh status
-
-# Verify PHY path exists
-ls /sys/kernel/debug/ieee80211/*/mt76
-```
-
-**RF-Kill Issues**
-```bash
-# Check RF-kill status
-rfkill list
-
-# Unblock all RF devices
-sudo rfkill unblock all
-```
-
-### Logs and Debugging
-
-View detailed logs:
-```bash
-# From the menu (option 11)
-./mtkloader.sh
-
-# Or directly
+# View all logs
 cat /tmp/mtkloader.log
 ```
 
-## 🛡️ Security Considerations
+## 🔧 Troubleshooting
 
-- The script requires sudo privileges for system-level operations
-- Running as root is discouraged and will trigger warnings
-- All operations are logged for audit purposes
-- Configuration files are stored in user home directory
+### Common Issues
+
+<details>
+<summary>Driver installation fails</summary>
+
+**Possible Causes:**
+- Missing kernel headers
+- Incompatible kernel version
+- Build tools not installed
+
+**Solutions:**
+```bash
+# Update system first
+sudo apt update && sudo apt upgrade  # Debian/Ubuntu
+sudo dnf update                      # Fedora/RHEL
+
+# Reinstall kernel headers
+sudo apt install linux-headers-$(uname -r)  # Debian/Ubuntu
+sudo dnf install kernel-headers kernel-devel # Fedora/RHEL
+
+# Try installation again
+./mtkloader.sh install
+```
+</details>
+
+<details>
+<summary>No wireless interfaces detected</summary>
+
+**Diagnosis:**
+```bash
+# Check USB devices
+lsusb | grep -i wireless
+
+# Check PCI devices
+lspci | grep -i wireless
+
+# Check loaded modules
+lsmod | grep mt76
+
+# Check interfaces manually
+ip link show
+```
+
+**Solutions:**
+- Ensure device is properly connected
+- Try different USB port
+- Check if device is supported
+- Manually load driver: `sudo modprobe mt7612u`
+</details>
+
+<details>
+<summary>Interface won't come up</summary>
+
+**Diagnosis:**
+```bash
+# Check interface status
+./mtkloader.sh status
+
+# Check RF-kill status
+rfkill list
+
+# Check kernel messages
+dmesg | tail -20
+```
+
+**Solutions:**
+```bash
+# Unblock RF devices
+sudo rfkill unblock all
+
+# Manually enable interface
+sudo ip link set wlan0 up
+
+# Restart NetworkManager
+sudo systemctl restart NetworkManager
+```
+</details>
+
+<details>
+<summary>LED control doesn't work</summary>
+
+**Requirements Check:**
+- MT76 driver loaded: `lsmod | grep mt76`
+- PHY device exists: `ls /sys/kernel/debug/ieee80211/`
+- Root privileges: Run with `sudo`
+
+**Manual LED Control:**
+```bash
+# Find PHY path
+PHY_PATH=$(find /sys/kernel/debug/ieee80211 -name "mt76" -type d | head -1)
+
+# Set register
+echo 0x770 | sudo tee "${PHY_PATH}/regidx"
+
+# Turn LED on
+echo 0x800000 | sudo tee "${PHY_PATH}/regval"
+```
+</details>
+
+### Getting Help
+
+1. **Check Logs**: Review `/tmp/mtkloader.log` for detailed error messages
+2. **Run Diagnostics**: Use `./mtkloader.sh detect` and `./mtkloader.sh status`
+3. **Check System**: Ensure all dependencies are installed
+4. **Verify Hardware**: Confirm device compatibility
+
+## 🔐 Security Considerations
+
+- **Sudo Required**: The script requires `sudo` privileges for system operations
+- **Package Installation**: Only installs packages from official repositories
+- **No Network Downloads**: Except for the driver repository from GitHub
+- **Log Files**: Logs may contain system information
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit pull requests or open issues.
+1. Fork the repository
+2. Create a feature branch
+3. Test on multiple distributions
+4. Submit a pull request
 
 ### Development Setup
+
 ```bash
+# Clone repository
 git clone https://github.com/0xb0rn3/mtkdrvlder.git
-cd mtkdrvlder
-# Make your changes
-# Test thoroughly
-# Submit PR
+
+# Test on different distributions
+docker run -it ubuntu:latest bash
+docker run -it fedora:latest bash
+docker run -it alpine:latest sh
 ```
 
 ## 📄 License
@@ -273,33 +336,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Original driver repository: [morrownr/7612u](https://github.com/morrownr/7612u)
-- Linux wireless community
-- Contributors and testers
+- [morrownr/7612u](https://github.com/morrownr/7612u) - MTK 7612U driver source
+- MediaTek for hardware documentation
+- Linux kernel developers for MT76 framework
 
 ## 📞 Support
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/0xb0rn3/mtkdrvlder/issues)
-- **Discussions**: [Community discussions](https://github.com/0xb0rn3/mtkdrvlder/discussions)
-
-## 🔄 Changelog
-
-### v0.1.2
-- Added colorized output
-- Comprehensive error handling
-- Configuration management
-- Enhanced logging
-- System information display
-- Improved menu interface
-- Command-line argument support
-- Better dependency checking
-
-### v0.1.1
-- Basic driver installation
-- Simple LED control
-- RF-kill management
+- **Issues**: [GitHub Issues](https://github.com/0xb0rn3/mtkdrvlder/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/0xb0rn3/mtkdrvlder/discussions)
+- **Developer**: [@0xb0rn3](https://github.com/0xb0rn3)
 
 ---
 
-**Developer**: 0xb0rn3  
-**GitHub**: [github.com/0xb0rn3/mtkdrvlder](https://github.com/0xb0rn3/mtkdrvlder)
+**Version**: 0.1.2  
+**Last Updated**: June 2025  
+**Compatibility**: Linux (Universal)
