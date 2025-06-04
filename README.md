@@ -1,125 +1,189 @@
-# MTK Driver Loader v2.0 OLD PROJECT REVIVED
+# MTK Driver Loader v0.1.2 OLD PROJECT REVIVED
+## 🔍 Troubleshooting
+
+### Quick Fixes
+
+**Installation Issues**
+```bash
+# Try different installation method
+./mtkloader.sh detect  # Check what's detected
+./mtkloader.sh install # Manual installation
+```
+
+**No Interface Detected**
+```bash
+# Check available interfaces
+ip link show
+iwconfig
+
+# Manual interface specification
+INTERFACE=wlan1 ./mtkloader.sh enable
+```
+
+**Driver Not Loading**
+```bash
+# Check driver status
+./mtkloader.sh status
+lsmod | grep mt76# MTK Universal Driver Loader v2.1
 
 [![GitHub](https://img.shields.io/badge/GitHub-0xb0rn3-blue?logo=github)](https://github.com/0xb0rn3/mtkdrvlder)
-[![Version](https://img.shields.io/badge/Version-2.0-green)](https://github.com/0xb0rn3/mtkdrvlder)
+[![Version](https://img.shields.io/badge/Version-2.1-green)](https://github.com/0xb0rn3/mtkdrvlder)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+[![Compatibility](https://img.shields.io/badge/Linux-Universal-orange)](https://github.com/0xb0rn3/mtkdrvlder)
 
-An enhanced, user-friendly script for managing MTK wireless adapters on Linux systems. This tool provides comprehensive driver installation, adapter management, and LED control with improved error handling and logging.
+Universal Linux script for MTK wireless adapters with automatic hardware detection, minimal installation visuals, and support for ALL major Linux distributions. One-command setup with intelligent auto-detection.
 
 ## 🚀 Features
 
+### Universal Compatibility
+- **ALL Linux Distributions**: Ubuntu, Debian, Fedora, CentOS, Arch, Manjaro, openSUSE, Alpine, Void, Gentoo
+- **Automatic Package Manager Detection**: apt, dnf, pacman, zypper, apk, emerge, xbps
+- **Smart Dependency Installation**: Installs correct packages for each distribution
+- **Hardware Auto-Detection**: Automatically finds wireless interfaces and devices
+
+### Minimal Installation Experience  
+- **One-Command Setup**: `./mtkloader.sh quick` - everything automated
+- **Minimal Visuals**: Clean, simple output with essential information only
+- **Silent Mode**: `./mtkloader.sh -q` for completely quiet operation
+- **Progress Indicators**: Simple checkmarks and minimal status updates
+
 ### Core Functionality
-- **Driver Installation**: Automated installation of MTK 7612U drivers with dependency management
-- **Adapter Management**: Enable/disable wireless adapters with intelligent status checking
-- **LED Control**: Full control over adapter LED indicators (on/off/blink)
-- **RF-Kill Management**: Automatic detection and handling of RF-kill blocks
+- **MTK Driver Installation**: Automated 7612U/7610U driver installation
+- **Interface Management**: Auto-detect and manage wireless interfaces
+- **LED Control**: Full LED control (on/off/blink) with hardware detection
+- **RF-Kill Management**: Automatic RF-kill detection and unblocking
 
-### Enhanced Features
-- **Colorized Output**: Easy-to-read colored terminal output
-- **Comprehensive Logging**: Detailed logging with timestamps
-- **Configuration Management**: Persistent settings storage
-- **System Information**: Detailed system and driver status reporting
-- **Error Handling**: Robust error detection and recovery
-- **Interactive Menu**: User-friendly menu-driven interface
-- **Command Line Interface**: Full CLI support for automation
+## 📋 Supported Systems
 
-## 📋 Requirements
+### Linux Distributions
+- **Debian Family**: Ubuntu, Debian, Linux Mint, Elementary OS, Zorin OS
+- **Red Hat Family**: Fedora, RHEL, CentOS, Rocky Linux, AlmaLinux  
+- **Arch Family**: Arch Linux, Manjaro, EndeavourOS, Garuda Linux
+- **SUSE Family**: openSUSE Leap, openSUSE Tumbleweed
+- **Others**: Alpine Linux, Void Linux, Gentoo Linux
 
-- **Operating System**: Linux (Ubuntu/Debian recommended)
-- **Architecture**: x86_64, ARM64
-- **Permissions**: sudo access required
-- **Dependencies**: Automatically installed by the script
-  - `git`
-  - `dkms`
-  - `build-essential`
-  - `linux-headers`
+### Package Managers
+- **apt** (Debian/Ubuntu)
+- **dnf/yum** (Fedora/RHEL)
+- **pacman** (Arch Linux)
+- **zypper** (openSUSE)
+- **apk** (Alpine)
+- **emerge** (Gentoo)
+- **xbps** (Void Linux)
 
-## 🔧 Installation
+### Hardware Support
+- **MTK 7612U** USB adapters
+- **MTK 7610U** USB adapters  
+- **Auto-detection** of compatible devices
+- **Universal interface** support (wlan0, wlp*, wlx*)
 
-### Quick Install
+## ⚡ Quick Start (Recommended)
+
+### One-Command Installation
 ```bash
-# Clone the repository
-git clone https://github.com/0xb0rn3/mtkdrvlder.git
-cd mtkdrvlder
-
-# Make the script executable
-chmod +x mtkloader.sh
-
-# Run the interactive menu
-./mtkloader.sh
+# Download and run automatic setup
+curl -s https://raw.githubusercontent.com/0xb0rn3/mtkdrvlder/main/mtkloader.sh | bash -s quick
 ```
 
-### Direct Download
+### Manual Download + Quick Setup
+```bash
+# Download the script
+wget https://raw.githubusercontent.com/0xb0rn3/mtkdrvlder/main/mtkloader.sh
+chmod +x mtkloader.sh
+
+# Run automatic setup (detects everything)
+./mtkloader.sh quick
+```
+
+### Silent Installation
+```bash
+# Completely quiet installation
+./mtkloader.sh -q
+```
+
+## 🔧 Installation Options
+
+### Git Clone Method
+```bash
+git clone https://github.com/0xb0rn3/mtkdrvlder.git
+cd mtkdrvlder
+chmod +x mtkloader.sh
+./mtkloader.sh quick
+```
+
+### Direct Download Method
 ```bash
 wget https://raw.githubusercontent.com/0xb0rn3/mtkdrvlder/main/mtkloader.sh
 chmod +x mtkloader.sh
-./mtkloader.sh
+./mtkloader.sh auto
 ```
 
 ## 🖥️ Usage
 
+### Automatic Mode (Recommended)
+The script automatically detects your Linux distribution, hardware, and installs everything needed:
+
+```bash
+# Automatic setup with detection
+./mtkloader.sh quick
+./mtkloader.sh auto  
+./mtkloader.sh setup
+
+# Silent automatic setup
+./mtkloader.sh -q
+```
+
 ### Interactive Menu
-Launch the script without arguments to access the interactive menu:
+Simple 8-option menu for manual control:
 ```bash
 ./mtkloader.sh
 ```
 
-The menu provides the following options:
-1. Install driver
-2. Enable adapter
-3. Disable adapter
-4. Turn on LED
-5. Turn off LED
-6. Blink LED
-7. Configure settings
-8. Check driver status
-9. Show interface status
-10. Check system info
-11. View logs
-12. Exit
-
 ### Command Line Interface
-For automation and scripting, use direct commands:
+Direct commands for automation:
 
 ```bash
-# Install the MTK driver
+# Hardware detection
+./mtkloader.sh detect
+
+# Driver installation  
 ./mtkloader.sh install
 
-# Enable the wireless adapter
+# Interface control
 ./mtkloader.sh enable
-
-# Disable the wireless adapter
 ./mtkloader.sh disable
 
 # LED control
 ./mtkloader.sh led-on
-./mtkloader.sh led-off
+./mtkloader.sh led-off  
 ./mtkloader.sh led-blink
 
-# System information
+# System status
 ./mtkloader.sh status
-./mtkloader.sh info
-
-# Configuration
-./mtkloader.sh configure
 
 # Help
 ./mtkloader.sh --help
 ```
 
-## ⚙️ Configuration
+## 🔧 Auto-Detection Features
 
-The script creates a configuration file at `~/.mtkloader_config` to store your preferences:
+### Hardware Detection
+- **USB Wireless Devices**: Automatically scans and identifies MTK devices
+- **Network Interfaces**: Detects wlan0, wlp*, wlx* interfaces automatically  
+- **MTK Device Recognition**: Specifically identifies MediaTek USB adapters
+- **Driver Status**: Checks if MTK drivers are already loaded
 
-- **Interface Name**: Default wireless interface (e.g., wlan0)
-- **Permanent Power**: Keep adapter always powered
-- **Repository URL**: Source repository for drivers
+### Distribution Detection  
+- **Package Manager**: Automatically detects apt/dnf/pacman/zypper/etc
+- **Dependency Mapping**: Installs correct packages per distribution
+- **Kernel Headers**: Finds and installs matching kernel headers
+- **Build Tools**: Installs appropriate build tools for each system
 
-### Environment Variables
-You can override settings using environment variables:
-```bash
-INTERFACE=wlan1 ./mtkloader.sh
-```
+### Smart Installation
+- **Minimal Dependencies**: Only installs what's actually needed
+- **Version Detection**: Handles different package names across distributions  
+- **Fallback Options**: Uses alternative methods if primary tools unavailable
+- **Clean Installation**: Removes temporary files automatically
 
 ## 📊 System Information
 
@@ -220,7 +284,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔄 Changelog
 
-### v2.0
+### v0.1.2
 - Added colorized output
 - Comprehensive error handling
 - Configuration management
@@ -230,7 +294,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Command-line argument support
 - Better dependency checking
 
-### v1.0
+### v0.1.1
 - Basic driver installation
 - Simple LED control
 - RF-kill management
