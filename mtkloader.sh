@@ -1,526 +1,527 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-# MTK Driver Loader v2.0
+# MTK Universal Driver Loader v0.1.2
 # Developer: 0xb0rn3
 # GitHub: github.com/0xb0rn3/mtkdrvlder
-# Enhanced version with improved features and error handling
+# Universal Linux compatibility with auto-detection
 
-set -euo pipefail  # Exit on error, undefined vars, pipe failures
+set -euo pipefail
 
-# Color codes for better output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
-
-# Configuration
-SCRIPT_VERSION="2.0"
-SCRIPT_NAME="mtkloader.sh"
-REPO_URL="https://github.com/morrownr/7612u.git"
-REPO_DIR="7612u"
-INTERFACE="${INTERFACE:-wlan0}"  # Allow environment override
-CONFIG_FILE="${HOME}/.mtkloader_config"
+# Minimal visual configuration
+SCRIPT_VERSION="0.1.2"
+QUIET_MODE=false
 LOG_FILE="/tmp/mtkloader.log"
-PERMANENT_POWER=false
+CONFIG_FILE="${HOME}/.mtkloader_config"
 
-# Logging function
+# Distribution detection
+DISTRO=""
+PKG_MANAGER=""
+INSTALL_CMD=""
+UPDATE_CMD=""
+
+# Hardware detection
+DETECTED_INTERFACES=()
+DETECTED_DEVICES=()
+AUTO_INTERFACE=""
+
+# Simple output functions (minimal visuals)
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+    echo "$(date '+%H:%M:%S') $1" >> "$LOG_FILE"
+    [[ "$QUIET_MODE" != true ]] && echo "[$1]"
 }
 
-# Print functions with colors
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-    log "SUCCESS: $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1" >&2
-    log "ERROR: $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-    log "WARNING: $1"
-}
-
-print_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+info() {
     log "INFO: $1"
+    [[ "$QUIET_MODE" != true ]] && echo "• $1"
 }
 
-print_header() {
-    echo -e "${PURPLE}================================${NC}"
-    echo -e "${PURPLE}  MTK Driver Loader v${SCRIPT_VERSION}${NC}"
-    echo -e "${PURPLE}  Developer: 0xb0rn3${NC}"
-    echo -e "${PURPLE}  GitHub: github.com/0xb0rn3/mtkdrvlder${NC}"
-    echo -e "${PURPLE}================================${NC}"
+success() {
+    log "SUCCESS: $1"
+    [[ "$QUIET_MODE" != true ]] && echo "✓ $1"
 }
 
-# Check if running as root
-check_root() {
-    if [[ $EUID -eq 0 ]]; then
-        print_warning "Running as root. This is not recommended for safety reasons."
-        read -p "Continue anyway? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            print_info "Exiting for safety."
-            exit 1
-        fi
-    fi
+error() {
+    log "ERROR: $1"
+    echo "✗ ERROR: $1" >&2
 }
 
-# Load configuration
-load_config() {
-    if [[ -f "$CONFIG_FILE" ]]; then
-        source "$CONFIG_FILE"
-        print_info "Configuration loaded from $CONFIG_FILE"
-    fi
+warning() {
+    log "WARNING: $1"
+    [[ "$QUIET_MODE" != true ]] && echo "⚠ $1"
 }
 
-# Save configuration
-save_config() {
-    cat > "$CONFIG_FILE" << EOF
-# MTK Loader Configuration
-INTERFACE="$INTERFACE"
-PERMANENT_POWER=$PERMANENT_POWER
-REPO_URL="$REPO_URL"
-EOF
-    print_success "Configuration saved to $CONFIG_FILE"
-}
-
-# System information
-show_system_info() {
-    print_info "System Information:"
-    echo "  OS: $(uname -s) $(uname -r)"
-    echo "  Architecture: $(uname -m)"
-    echo "  Current User: $(whoami)"
-    echo "  Interface: $INTERFACE"
-    echo "  Log File: $LOG_FILE"
-    echo "  Config File: $CONFIG_FILE"
-}
-
-# Check dependencies
-check_dependencies() {
-    local deps=("git" "make" "gcc" "sudo" "rfkill" "ifconfig")
-    local missing=()
-    
-    for dep in "${deps[@]}"; do
-        if ! command -v "$dep" &> /dev/null; then
-            missing+=("$dep")
-        fi
-    done
-    
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        print_warning "Missing dependencies: ${missing[*]}"
-        return 1
-    fi
-    
-    print_success "All dependencies are available"
-    return 0
-}
-
-# Enhanced RF-kill check with detailed status
-check_rfkill() {
-    print_info "Checking RF-kill status..."
-    
-    if ! command -v rfkill &> /dev/null; then
-        print_warning "rfkill command not found. Skipping RF-kill check."
-        return 0
-    fi
-    
-    local rfkill_output
-    rfkill_output=$(rfkill list 2>/dev/null || echo "")
-    
-    if [[ -z "$rfkill_output" ]]; then
-        print_info "No RF-kill devices found."
-        return 0
-    fi
-    
-    echo "RF-kill Status:"
-    echo "$rfkill_output"
-    
-    if echo "$rfkill_output" | grep -q "blocked: yes"; then
-        print_warning "Some RF devices are blocked. Attempting to unblock..."
-        if sudo rfkill unblock all; then
-            print_success "RF-kill unblock successful."
-        else
-            print_error "Failed to unblock RF-kill."
-            return 1
-        fi
+# Detect Linux distribution
+detect_distro() {
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        case "$ID" in
+            ubuntu|debian|linuxmint|elementary|zorin)
+                DISTRO="debian"
+                PKG_MANAGER="apt"
+                INSTALL_CMD="apt install -y"
+                UPDATE_CMD="apt update"
+                ;;
+            fedora|rhel|centos|rocky|almalinux)
+                DISTRO="redhat"
+                PKG_MANAGER="dnf"
+                INSTALL_CMD="dnf install -y"
+                UPDATE_CMD="dnf check-update"
+                ;;
+            opensuse*|suse)
+                DISTRO="suse"
+                PKG_MANAGER="zypper"
+                INSTALL_CMD="zypper install -y"
+                UPDATE_CMD="zypper refresh"
+                ;;
+            arch|manjaro|endeavouros|garuda)
+                DISTRO="arch"
+                PKG_MANAGER="pacman"
+                INSTALL_CMD="pacman -S --noconfirm"
+                UPDATE_CMD="pacman -Sy"
+                ;;
+            alpine)
+                DISTRO="alpine"
+                PKG_MANAGER="apk"
+                INSTALL_CMD="apk add"
+                UPDATE_CMD="apk update"
+                ;;
+            gentoo)
+                DISTRO="gentoo"
+                PKG_MANAGER="emerge"
+                INSTALL_CMD="emerge"
+                UPDATE_CMD="emerge --sync"
+                ;;
+            void)
+                DISTRO="void"
+                PKG_MANAGER="xbps"
+                INSTALL_CMD="xbps-install -y"
+                UPDATE_CMD="xbps-install -S"
+                ;;
+            *)
+                DISTRO="unknown"
+                ;;
+        esac
+    elif command -v lsb_release &>/dev/null; then
+        case "$(lsb_release -si)" in
+            Ubuntu|Debian) DISTRO="debian" ;;
+            Fedora|RedHat|CentOS) DISTRO="redhat" ;;
+            *) DISTRO="unknown" ;;
+        esac
     else
-        print_success "No RF devices are blocked."
+        DISTRO="unknown"
     fi
     
-    return 0
+    info "Detected: $DISTRO ($PKG_MANAGER)"
 }
 
-# Enhanced package installation with progress
-install_dependencies() {
-    print_info "Updating package lists..."
-    if sudo apt update &> /dev/null; then
-        print_success "Package lists updated successfully."
-    else
-        print_error "Failed to update package lists."
-        return 1
-    fi
-    
-    local packages=("dkms" "build-essential" "git" "linux-headers-$(uname -r)")
-    
-    print_info "Installing necessary packages: ${packages[*]}"
-    if sudo apt install -y "${packages[@]}"; then
-        print_success "All packages installed successfully."
-    else
-        print_error "Failed to install some packages."
-        return 1
-    fi
-}
-
-# Enhanced driver installation with better error handling
-install_driver() {
-    print_info "Starting driver installation process..."
-    
-    # Check if already installed
-    if lsmod | grep -q "mt7612u"; then
-        print_warning "MT7612U driver appears to be already loaded."
-        read -p "Reinstall anyway? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            return 0
-        fi
-    fi
-    
-    # Clean up previous installation
-    if [[ -d "$REPO_DIR" ]]; then
-        print_info "Removing existing repository directory..."
-        rm -rf "$REPO_DIR"
-    fi
-    
-    print_info "Cloning repository from $REPO_URL..."
-    if git clone "$REPO_URL"; then
-        print_success "Repository cloned successfully."
-    else
-        print_error "Failed to clone repository."
-        return 1
-    fi
-    
-    cd "$REPO_DIR" || {
-        print_error "Failed to enter repository directory."
-        return 1
-    }
-    
-    # Build and install
-    print_info "Building driver..."
-    if make; then
-        print_success "Driver built successfully."
-    else
-        print_error "Failed to build driver."
-        return 1
-    fi
-    
-    print_info "Installing driver..."
-    if sudo make install; then
-        print_success "Driver installed successfully."
-    else
-        print_error "Failed to install driver."
-        return 1
-    fi
-    
-    # Load the module
-    print_info "Loading driver module..."
-    if sudo modprobe mt7612u; then
-        print_success "Driver module loaded successfully."
-    else
-        print_warning "Failed to load driver module automatically."
-        print_info "You may need to reboot or manually load the module."
-    fi
-    
-    cd - > /dev/null
-}
-
-# Enhanced adapter management
-manage_adapter() {
-    local action="$1"
-    local interface_exists=false
-    
-    # Check if interface exists
-    if ip link show "$INTERFACE" &> /dev/null; then
-        interface_exists=true
-    fi
-    
-    if [[ "$interface_exists" == false ]]; then
-        print_error "Interface $INTERFACE not found."
-        print_info "Available interfaces:"
-        ip link show | grep -E "^[0-9]+:" | awk '{print $2}' | sed 's/://'
-        return 1
-    fi
-    
-    case "$action" in
-        enable)
-            print_info "Enabling adapter $INTERFACE..."
-            if sudo ip link set "$INTERFACE" up; then
-                print_success "Adapter $INTERFACE enabled."
-                show_interface_status
-            else
-                print_error "Failed to enable adapter $INTERFACE."
-                return 1
-            fi
+# Universal package installation
+install_package() {
+    local package="$1"
+    case "$DISTRO" in
+        debian)
+            case "$package" in
+                "build-tools") sudo $INSTALL_CMD build-essential ;;
+                "kernel-headers") sudo $INSTALL_CMD linux-headers-$(uname -r) ;;
+                "dkms") sudo $INSTALL_CMD dkms ;;
+                "git") sudo $INSTALL_CMD git ;;
+                "wireless-tools") sudo $INSTALL_CMD wireless-tools iw ;;
+                "usb-utils") sudo $INSTALL_CMD usbutils ;;
+            esac
             ;;
-        disable)
-            print_info "Disabling adapter $INTERFACE..."
-            if sudo ip link set "$INTERFACE" down; then
-                print_success "Adapter $INTERFACE disabled."
-            else
-                print_error "Failed to disable adapter $INTERFACE."
-                return 1
-            fi
+        redhat)
+            case "$package" in
+                "build-tools") sudo $INSTALL_CMD gcc make kernel-devel ;;
+                "kernel-headers") sudo $INSTALL_CMD kernel-headers kernel-devel ;;
+                "dkms") sudo $INSTALL_CMD dkms ;;
+                "git") sudo $INSTALL_CMD git ;;
+                "wireless-tools") sudo $INSTALL_CMD wireless-tools iw ;;
+                "usb-utils") sudo $INSTALL_CMD usbutils ;;
+            esac
+            ;;
+        arch)
+            case "$package" in
+                "build-tools") sudo $INSTALL_CMD base-devel ;;
+                "kernel-headers") sudo $INSTALL_CMD linux-headers ;;
+                "dkms") sudo $INSTALL_CMD dkms ;;
+                "git") sudo $INSTALL_CMD git ;;
+                "wireless-tools") sudo $INSTALL_CMD wireless_tools iw ;;
+                "usb-utils") sudo $INSTALL_CMD usbutils ;;
+            esac
+            ;;
+        suse)
+            case "$package" in
+                "build-tools") sudo $INSTALL_CMD gcc make kernel-devel ;;
+                "kernel-headers") sudo $INSTALL_CMD kernel-source ;;
+                "dkms") sudo $INSTALL_CMD dkms ;;
+                "git") sudo $INSTALL_CMD git ;;
+                "wireless-tools") sudo $INSTALL_CMD wireless-tools iw ;;
+                "usb-utils") sudo $INSTALL_CMD usbutils ;;
+            esac
+            ;;
+        alpine)
+            case "$package" in
+                "build-tools") sudo $INSTALL_CMD build-base ;;
+                "kernel-headers") sudo $INSTALL_CMD linux-headers ;;
+                "dkms") warning "DKMS not available on Alpine" ;;
+                "git") sudo $INSTALL_CMD git ;;
+                "wireless-tools") sudo $INSTALL_CMD wireless-tools iw ;;
+                "usb-utils") sudo $INSTALL_CMD usbutils ;;
+            esac
+            ;;
+        void)
+            case "$package" in
+                "build-tools") sudo $INSTALL_CMD gcc make ;;
+                "kernel-headers") sudo $INSTALL_CMD linux-headers ;;
+                "dkms") sudo $INSTALL_CMD dkms ;;
+                "git") sudo $INSTALL_CMD git ;;
+                "wireless-tools") sudo $INSTALL_CMD wireless_tools iw ;;
+                "usb-utils") sudo $INSTALL_CMD usbutils ;;
+            esac
             ;;
     esac
 }
 
-# Show interface status
-show_interface_status() {
-    print_info "Interface Status:"
-    ip addr show "$INTERFACE" 2>/dev/null || print_warning "Could not get interface details."
+# Auto-detect wireless hardware
+detect_hardware() {
+    info "Scanning for wireless hardware..."
     
-    # Show wireless info if available
-    if command -v iwconfig &> /dev/null; then
-        print_info "Wireless Information:"
-        iwconfig "$INTERFACE" 2>/dev/null | grep -v "no wireless extensions" || true
+    # Clear previous detections
+    DETECTED_INTERFACES=()
+    DETECTED_DEVICES=()
+    
+    # Detect USB wireless devices
+    local usb_devices
+    if command -v lsusb &>/dev/null; then
+        usb_devices=$(lsusb 2>/dev/null || echo "")
+        while IFS= read -r line; do
+            if echo "$line" | grep -qi "wireless\|802\.11\|wifi\|realtek\|mediatek\|ralink\|atheros\|broadcom"; then
+                DETECTED_DEVICES+=("$line")
+            fi
+        done <<< "$usb_devices"
+    fi
+    
+    # Detect PCI wireless devices
+    if command -v lspci &>/dev/null; then
+        local pci_devices
+        pci_devices=$(lspci 2>/dev/null | grep -i "wireless\|802\.11\|wifi\|network" || echo "")
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && DETECTED_DEVICES+=("$line")
+        done <<< "$pci_devices"
+    fi
+    
+    # Detect network interfaces
+    if command -v ip &>/dev/null; then
+        local interfaces
+        interfaces=$(ip link show 2>/dev/null | grep -E "wlan|wlp|wlx" | cut -d: -f2 | tr -d ' ' || echo "")
+        while IFS= read -r iface; do
+            [[ -n "$iface" ]] && DETECTED_INTERFACES+=("$iface")
+        done <<< "$interfaces"
+    fi
+    
+    # Fallback to iwconfig
+    if [[ ${#DETECTED_INTERFACES[@]} -eq 0 ]] && command -v iwconfig &>/dev/null; then
+        local iw_output
+        iw_output=$(iwconfig 2>/dev/null | grep -E "^[a-z]" | cut -d' ' -f1 || echo "")
+        while IFS= read -r iface; do
+            [[ -n "$iface" ]] && DETECTED_INTERFACES+=("$iface")
+        done <<< "$iw_output"
+    fi
+    
+    # Set auto interface
+    if [[ ${#DETECTED_INTERFACES[@]} -gt 0 ]]; then
+        AUTO_INTERFACE="${DETECTED_INTERFACES[0]}"
+        success "Auto-detected interface: $AUTO_INTERFACE"
+    else
+        warning "No wireless interfaces detected"
+        AUTO_INTERFACE="wlan0"
+    fi
+    
+    # Show detected hardware
+    if [[ ${#DETECTED_DEVICES[@]} -gt 0 ]]; then
+        info "Detected wireless devices:"
+        printf "  %s\n" "${DETECTED_DEVICES[@]}"
+    fi
+    
+    if [[ ${#DETECTED_INTERFACES[@]} -gt 0 ]]; then
+        info "Detected interfaces:"
+        printf "  %s\n" "${DETECTED_INTERFACES[@]}"
     fi
 }
 
-# Enhanced LED control with validation
-manage_led() {
+# Detect MTK devices specifically
+detect_mtk_devices() {
+    local mtk_found=false
+    
+    # Check for MTK USB devices
+    if command -v lsusb &>/dev/null; then
+        if lsusb | grep -qi "mediatek\|0e8d:"; then
+            success "MediaTek USB device detected"
+            mtk_found=true
+        fi
+    fi
+    
+    # Check for loaded MTK modules
+    if lsmod | grep -q "mt76\|mt7612u\|mt7610u"; then
+        success "MTK driver already loaded"
+        mtk_found=true
+    fi
+    
+    return $mtk_found
+}
+
+# Universal dependency installation
+install_dependencies() {
+    info "Installing dependencies for $DISTRO..."
+    
+    # Update package manager
+    case "$DISTRO" in
+        debian|redhat|suse|arch|void)
+            sudo $UPDATE_CMD &>/dev/null || warning "Failed to update package lists"
+            ;;
+    esac
+    
+    # Install core dependencies
+    local deps=("build-tools" "kernel-headers" "git" "wireless-tools" "usb-utils")
+    [[ "$DISTRO" != "alpine" ]] && deps+=("dkms")
+    
+    for dep in "${deps[@]}"; do
+        info "Installing $dep..."
+        install_package "$dep" || warning "Failed to install $dep"
+    done
+    
+    success "Dependencies installed"
+}
+
+# Universal driver installation
+install_driver() {
+    local repo_url="https://github.com/morrownr/7612u.git"
+    local repo_dir="7612u"
+    
+    info "Installing MTK driver..."
+    
+    # Clean previous installation
+    [[ -d "$repo_dir" ]] && rm -rf "$repo_dir"
+    
+    # Clone repository
+    if ! git clone "$repo_url" "$repo_dir" &>/dev/null; then
+        error "Failed to clone driver repository"
+        return 1
+    fi
+    
+    cd "$repo_dir" || return 1
+    
+    # Build driver
+    info "Building driver..."
+    if ! make &>/dev/null; then
+        error "Failed to build driver"
+        return 1
+    fi
+    
+    # Install driver
+    info "Installing driver..."
+    if ! sudo make install &>/dev/null; then
+        error "Failed to install driver"
+        return 1
+    fi
+    
+    # Load module
+    info "Loading driver module..."
+    sudo modprobe mt7612u &>/dev/null || warning "Module load failed (may need reboot)"
+    
+    cd - &>/dev/null
+    rm -rf "$repo_dir"
+    
+    success "Driver installation complete"
+}
+
+# Universal interface management
+manage_interface() {
+    local action="$1"
+    local interface="${2:-$AUTO_INTERFACE}"
+    
+    if ! ip link show "$interface" &>/dev/null; then
+        error "Interface $interface not found"
+        return 1
+    fi
+    
+    case "$action" in
+        up)
+            info "Enabling $interface..."
+            sudo ip link set "$interface" up &>/dev/null
+            success "Interface $interface enabled"
+            ;;
+        down)
+            info "Disabling $interface..."
+            sudo ip link set "$interface" down &>/dev/null
+            success "Interface $interface disabled"
+            ;;
+        status)
+            ip addr show "$interface" 2>/dev/null | head -2
+            ;;
+    esac
+}
+
+# Universal LED control
+control_led() {
     local action="$1"
     local phy_path
     
-    # Find PHY path dynamically
+    # Find PHY path
     phy_path=$(find /sys/kernel/debug/ieee80211 -name "mt76" -type d 2>/dev/null | head -1)
     
     if [[ -z "$phy_path" ]]; then
-        print_error "MT76 PHY path not found. Make sure the driver is loaded."
+        error "MT76 PHY not found - driver may not be loaded"
         return 1
     fi
     
-    print_info "Using PHY path: $phy_path"
-    
-    # Set LED register
-    if ! echo 0x770 | sudo tee "${phy_path}/regidx" > /dev/null; then
-        print_error "Failed to set LED register index."
-        return 1
-    fi
+    # Set register
+    echo 0x770 | sudo tee "${phy_path}/regidx" &>/dev/null
     
     case "$action" in
-        on)
-            if echo 0x800000 | sudo tee "${phy_path}/regval" > /dev/null; then
-                print_success "LED turned on."
-            else
-                print_error "Failed to turn on LED."
-                return 1
-            fi
+        on) echo 0x800000 | sudo tee "${phy_path}/regval" &>/dev/null ;;
+        off) echo 0x820000 | sudo tee "${phy_path}/regval" &>/dev/null ;;
+        blink) echo 0x840000 | sudo tee "${phy_path}/regval" &>/dev/null ;;
+    esac
+    
+    success "LED $action"
+}
+
+# RF-kill management
+manage_rfkill() {
+    if ! command -v rfkill &>/dev/null; then
+        warning "rfkill not available"
+        return 0
+    fi
+    
+    if rfkill list | grep -q "blocked: yes"; then
+        info "Unblocking RF devices..."
+        sudo rfkill unblock all
+        success "RF devices unblocked"
+    fi
+}
+
+# Quick setup mode
+quick_setup() {
+    info "MTK Universal Driver Loader v$SCRIPT_VERSION"
+    info "Quick setup mode - minimal interaction"
+    
+    detect_distro
+    detect_hardware
+    
+    if detect_mtk_devices; then
+        info "MTK device already configured"
+        return 0
+    fi
+    
+    info "Setting up MTK driver..."
+    install_dependencies
+    install_driver
+    manage_rfkill
+    
+    if [[ -n "$AUTO_INTERFACE" ]]; then
+        manage_interface up "$AUTO_INTERFACE"
+    fi
+    
+    success "Setup complete!"
+    info "Interface: $AUTO_INTERFACE"
+    info "Use: $0 led-on|led-off|led-blink for LED control"
+}
+
+# Minimal menu
+show_menu() {
+    echo
+    echo "MTK Driver Loader v$SCRIPT_VERSION"
+    echo "1. Quick Setup (Auto)"
+    echo "2. Install Driver"
+    echo "3. Enable Interface"
+    echo "4. LED On"
+    echo "5. LED Off"
+    echo "6. LED Blink"
+    echo "7. Status"
+    echo "8. Exit"
+    echo
+    read -p "Choice [1-8]: " choice
+    
+    case "$choice" in
+        1) quick_setup ;;
+        2) detect_distro && install_dependencies && install_driver ;;
+        3) detect_hardware && manage_interface up ;;
+        4) control_led on ;;
+        5) control_led off ;;
+        6) control_led blink ;;
+        7) 
+            detect_hardware
+            manage_interface status
+            lsmod | grep -E "mt76|mt7612" || echo "No MTK modules loaded"
             ;;
-        off)
-            if echo 0x820000 | sudo tee "${phy_path}/regval" > /dev/null; then
-                print_success "LED turned off."
-            else
-                print_error "Failed to turn off LED."
-                return 1
-            fi
-            ;;
-        blink)
-            if echo 0x840000 | sudo tee "${phy_path}/regval" > /dev/null; then
-                print_success "LED set to blink."
-            else
-                print_error "Failed to set LED to blink."
-                return 1
-            fi
-            ;;
+        8) exit 0 ;;
+        *) error "Invalid choice" ;;
     esac
 }
 
-# Configuration management
-configure_settings() {
-    echo
-    print_info "Current Configuration:"
-    echo "  Interface: $INTERFACE"
-    echo "  Permanent Power: $PERMANENT_POWER"
-    echo "  Repository URL: $REPO_URL"
-    echo
-    
-    read -p "Change interface name? (current: $INTERFACE) [Enter to keep]: " new_interface
-    if [[ -n "$new_interface" ]]; then
-        INTERFACE="$new_interface"
-    fi
-    
-    read -p "Enable permanent power? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        PERMANENT_POWER=true
-    else
-        PERMANENT_POWER=false
-    fi
-    
-    save_config
-    print_success "Configuration updated."
-}
-
-# Driver status check
-check_driver_status() {
-    print_info "Driver Status Check:"
-    
-    # Check if module is loaded
-    if lsmod | grep -q "mt7612u\|mt76"; then
-        print_success "MT76xx driver is loaded."
-    else
-        print_warning "MT76xx driver is not loaded."
-    fi
-    
-    # Check USB devices
-    print_info "USB Wireless Devices:"
-    lsusb | grep -i "wireless\|802.11\|wifi" || print_info "No wireless USB devices found."
-    
-    # Check network interfaces
-    print_info "Network Interfaces:"
-    ip link show | grep -E "wlan|wlp" || print_info "No wireless interfaces found."
-}
-
-# Enhanced menu with more options
-display_menu() {
-    while true; do
-        echo
-        print_header
-        echo
-        echo -e "${CYAN}Main Menu:${NC}"
-        echo "1.  Install driver"
-        echo "2.  Enable adapter"
-        echo "3.  Disable adapter"
-        echo "4.  Turn on LED"
-        echo "5.  Turn off LED"
-        echo "6.  Blink LED"
-        echo "7.  Configure settings"
-        echo "8.  Check driver status"
-        echo "9.  Show interface status"
-        echo "10. Check system info"
-        echo "11. View logs"
-        echo "12. Exit"
-        echo
-        
-        read -p "Enter your choice [1-12]: " choice
-        
-        case "$choice" in
-            1) install_dependencies && install_driver ;;
-            2) 
-                if [[ "$PERMANENT_POWER" == true ]]; then
-                    print_info "Adapter is set to permanent power mode."
-                else
-                    manage_adapter enable
-                fi
-                ;;
-            3)
-                if [[ "$PERMANENT_POWER" == true ]]; then
-                    print_info "Adapter is in permanent power mode. Disable not needed."
-                else
-                    manage_adapter disable
-                fi
-                ;;
-            4) manage_led on ;;
-            5) manage_led off ;;
-            6) manage_led blink ;;
-            7) configure_settings ;;
-            8) check_driver_status ;;
-            9) show_interface_status ;;
-            10) show_system_info ;;
-            11) 
-                if [[ -f "$LOG_FILE" ]]; then
-                    less "$LOG_FILE"
-                else
-                    print_warning "Log file not found."
-                fi
-                ;;
-            12) 
-                print_info "Thank you for using MTK Driver Loader!"
-                exit 0
-                ;;
-            *) print_error "Invalid option. Please try again." ;;
-        esac
-        
-        read -p "Press Enter to continue..."
-    done
-}
-
-# Command line argument handling
-handle_args() {
+# Command line handling
+handle_command() {
     case "$1" in
-        install) install_dependencies && install_driver ;;
-        enable) manage_adapter enable ;;
-        disable) manage_adapter disable ;;
-        led-on) manage_led on ;;
-        led-off) manage_led off ;;
-        led-blink) manage_led blink ;;
-        configure) configure_settings ;;
-        status) check_driver_status ;;
-        info) show_system_info ;;
-        --help|-h)
-            echo "Usage: $0 [OPTION]"
-            echo "Options:"
-            echo "  install      Install the MTK driver"
-            echo "  enable       Enable the wireless adapter"
-            echo "  disable      Disable the wireless adapter"
-            echo "  led-on       Turn on the LED"
-            echo "  led-off      Turn off the LED"
-            echo "  led-blink    Make the LED blink"
-            echo "  configure    Configure settings"
-            echo "  status       Check driver status"
-            echo "  info         Show system information"
-            echo "  --help, -h   Show this help message"
+        quick|auto|setup) quick_setup ;;
+        install) detect_distro && install_dependencies && install_driver ;;
+        enable) detect_hardware && manage_interface up ;;
+        disable) detect_hardware && manage_interface down ;;
+        led-on) control_led on ;;
+        led-off) control_led off ;;
+        led-blink) control_led blink ;;
+        status) 
+            detect_distro
+            detect_hardware
+            manage_interface status
+            ;;
+        detect) detect_distro && detect_hardware ;;
+        -q|--quiet) QUIET_MODE=true; quick_setup ;;
+        -h|--help)
+            echo "MTK Universal Driver Loader v$SCRIPT_VERSION"
+            echo "Usage: $0 [command]"
             echo
-            echo "If no option is provided, the interactive menu will be displayed."
+            echo "Commands:"
+            echo "  quick/auto/setup  - Automatic setup (recommended)"
+            echo "  install          - Install driver only"
+            echo "  enable           - Enable interface"
+            echo "  disable          - Disable interface"
+            echo "  led-on           - Turn LED on"
+            echo "  led-off          - Turn LED off"
+            echo "  led-blink        - Blink LED"
+            echo "  status           - Show status"
+            echo "  detect           - Detect hardware"
+            echo "  -q, --quiet      - Quiet mode"
+            echo "  -h, --help       - Show help"
+            echo
+            echo "No command = Interactive menu"
             ;;
-        *)
-            print_error "Unknown option: $1"
-            echo "Use '$0 --help' for usage information."
-            exit 1
-            ;;
+        *) error "Unknown command: $1" && exit 1 ;;
     esac
 }
-
-# Cleanup function
-cleanup() {
-    print_info "Cleaning up..."
-    # Add any cleanup tasks here
-}
-
-# Signal handlers
-trap cleanup EXIT
-trap 'print_error "Script interrupted."; exit 130' INT TERM
 
 # Main execution
 main() {
-    # Initialize logging
-    log "MTK Driver Loader v${SCRIPT_VERSION} started"
+    # Initialize log
+    echo "MTK Loader v$SCRIPT_VERSION - $(date)" > "$LOG_FILE"
     
-    # Load configuration
-    load_config
-    
-    # Check if running as root (warn but don't exit)
-    check_root
-    
-    # Check dependencies
-    if ! check_dependencies; then
-        print_warning "Some dependencies are missing. Install option may fail."
+    # Check sudo availability
+    if ! command -v sudo &>/dev/null; then
+        error "sudo required but not found"
+        exit 1
     fi
     
-    # Handle command line arguments or show menu
+    # Handle arguments
     if [[ $# -eq 0 ]]; then
-        display_menu
+        while true; do
+            show_menu
+            read -p "Continue? (y/n): " -n 1 -r
+            echo
+            [[ ! $REPLY =~ ^[Yy]$ ]] && break
+        done
     else
-        handle_args "$1"
+        handle_command "$1"
     fi
 }
 
-# Run main function with all arguments
+# Run main with all arguments
 main "$@"
